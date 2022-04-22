@@ -1,19 +1,14 @@
-FROM golang
+FROM golang:1.16 AS backend
 
-RUN \
-  apt-get update && \
-  DEBIAN_FRONTEND=noninteractive \
-    apt-get install -y --no-install-recommends \
-      ffmpeg \
-      ffmpegthumbnailer \
-  && \
-  apt-get clean && \
-  rm -rf /var/lib/apt/lists/* && \
-  touch /root/.dms-ffprobe-cache
+WORKDIR /builder
+COPY ./ /builder
 
-COPY . /go/src/github.com/anacrolix/dms/
-WORKDIR /go/src/github.com/anacrolix/dms/
-RUN \
-  go build -v .
+RUN CGO_ENABLED=0 go build -o ./dist/bin/dms ./main.go
 
-ENTRYPOINT [ "./dms" ]
+FROM alpine:3.14.0
+
+RUN apk update && apk add ffmpeg ffmpegthumbnailer
+
+WORKDIR /app
+
+COPY --from=backend /builder/dist /app/
